@@ -28,11 +28,10 @@ logfile=$SVC_DIR/log-svc/backup/$logtime.log
 
 #
 # 先移走日志文件，然后创建新的日志文件，通知 nginx 重新打开
-# https://www.nginx.com/resources/wiki/start/topics/examples/logrotation/
 #
 mv $LOG_FILE $logfile
 touch $LOG_FILE
-kill -USR1 $(< $LOG_DIR/nginx.pid)
+$SVC_DIR/run.sh reopen
 sleep 1
 
 #
@@ -42,14 +41,7 @@ sleep 1
 #
 echo "compress $logtime ($logsize bytes)"
 
-if (( $logsize > 100 * 1024 * 1024 )); then
-  # 日志较大，使用快速压缩
-  nice -n 19 \
-    gzip $logfile
-else
-  # 日志不大，使用高强度压缩
-  nice -n 19 \
-    ~/tools/brotli $logfile --rm
-fi
+nice -n 19 \
+  gzip $logfile
 
 echo "done"

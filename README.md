@@ -1,99 +1,91 @@
-# 在线预览
+# 演示
 
-https://zjcqoo.github.io/-----https://www.google.com
+https://jsproxy.tk/-----https://www.google.com
 
-（目前仍在更新中，最好使用隐身模式访问，避免缓存导致的问题）
+（目前仍在更新中，如有问题尝试用隐身模式访问）
 
-[之前版本](https://github.com/EtherDream/jsproxy/tree/first-ver)已不再更新，但[演示服务](https://jsproxy.tk/)仍保留一段时间。
+
+# 更新
+
+* 2019-05-30 更新 cfworker，对 ytb 视频进行了优化（推荐选 1080p+，不会增加服务器压力）
+
+* 2019-05-29 nginx 增加静态资源服务，可同时支持代理接口和首页访问
+
+* 2019-05-27 增加 nio.io、sslip.io 后备域名，减少申请失败的几率
+
+* 2019-05-26 安装时自动申请证书（使用 xip.io 域名），安装后即可预览
+
+[查看更多](changelogs)
 
 
 # 安装
 
-新建一个名为 `jsproxy` 用户，在其主目录安装 nginx：
-
 ```bash
-useradd jsproxy -g nobody
-su jsproxy
-
-cd ~
-git clone --depth=1 https://github.com/EtherDream/jsproxy.git server
-
-cd server
-./setup-nginx.sh
+curl https://raw.githubusercontent.com/EtherDream/jsproxy/master/i.sh | bash
 ```
 
-安装过程若有依赖缺失，可尝试（CentOS 为例）：
+* 自动安装目前只支持 Linux x64，并且需要 root 权限
 
-```bash
-yum install -y \
-	gcc gcc-c++ \
-	pcre pcre-devel \
-	openssl openssl-devel \
-	zlib zlib-devel
-```
+* 安装过程中 80 端口能被外网访问（申请 HTTPS 证书）
 
-> nginx 最终安装在 `/home/jsproxy/openresty` 下，不会和系统已有的冲突。
+无法满足上述条件，或想了解安装细节，可尝试[手动安装](docs/setup.md)。
 
-
-## 测试
-
-启动服务：
-
-```bash
-~/server/run.sh
-```
-
-访问：https://etherdream.github.io/jsproxy-localtest/-----https://github.com/
-
-![](https://raw.githubusercontent.com/EtherDream/jsproxy-localtest/temp/preview.png)
-
-注意，**当前项目只提供接口服务**，浏览器端脚本和页面不在本项目。这样做是为了让接口和界面分离，意义参见后续。
+测试: `https://服务器IP.xip.io:8443`（具体参考脚本输出）
 
 
 # 部署
 
-## 客户端
+Fork 本项目，进入 `gh-pages` 分支，编辑 `conf.js` 文件：
 
-浏览器端项目位于：https://github.com/EtherDream/jsproxy-browser
+* 节点列表（`node_map` 字段，包括节点 id 和节点主机）
 
-准备一个域名（例如 `example.com`），参考备注，将其添加到线路地址。
+* 默认节点（`node_default` 字段，指定节点 id）
 
-> 注意：端口是 8443，不是 8080。因为 Service Worker 只有本地测试可用 HTTP 协议，其他场合必须 HTTPS。
+访问 `https://用户名.github.io/jsproxy` 预览。
 
-编译脚本，将 `www` 目录发布到 Web 空间（例如 `https://myhost.github.io`）
-
-（目前还不完善，之后将实现动态配置，无需修改 JS 代码）
+GitHub 支持[自定义域名](https://help.github.com/en/articles/using-a-custom-domain-with-github-pages)。也可以将文件发布到自己的 Web 服务器上。
 
 
-## 服务端
+# 维护
 
-解析 `example.com` 到自己的服务器。给该域名申请证书，保存到 `cert/example.com/` 目录下。（可参考 `gen-cert` 目录，使用脚本自动生成）
+```sh
+# 切换到 jsproxy 用户
+su - jsproxy
 
-修改 `nginx.conf` 中域名相关的配置（默认被注释）。
+# 重启服务
+./run.sh reload
 
-在 `allowed-sites.conf` 中添加一行 Web 空间的地址，例如：
+# 关闭服务（参数和 nginx -s 相同）
+./run.sh quit
 
+# 启动服务
+./run.sh
+
+# 查看代理日志
+tail server/nginx/logs/proxy.log
 ```
-https://myhost.github.io     'my';
-```
 
-重启服务。访问 `https://myhost.github.io` 预览。
+目前暂未实现开机自启动。
+
+
+# 禁止外链
+
+默认情况下，代理接口允许所有 `github.io` 子站点调用，这可能导致不必要的流量消耗。
+
+如果希望只给自己网站使用，可编辑 `allowed-sites.conf`。（重启服务生效）
 
 
 # 安全策略
 
-如果不希望代理访问内网，可执行 `setup-ipset.sh`，避免 SSRF 风险。
+如果不希望代理访问内网（避免 SSRF 风险），可执行 `setup-ipset.sh`：
 
-该脚本可禁止 `jsporxy` 用户访问内网（针对 TCP）。nginx 之外的程序也生效，但不影响其他用户。
+```bash
+/home/jsproxy/server/setup-ipset.sh
+```
 
+> 需要 root 权限，依赖 `ipset` 命令
 
-# 服务管理
-
-重启服务：`./run.sh reload`
-
-关闭服务：`./run.sh quit`
-
-参数和 nginx -s 相同。
+该脚本可禁止 `jsporxy` 用户访问保留 IP 段（针对 TCP）。nginx 之外的程序也生效，但不影响其他用户。
 
 
 # 项目特点
@@ -119,49 +111,33 @@ https://myhost.github.io     'my';
 对于有些无法重写的 API，例如 `location`，本代理会将代码中字面出现的 `location` 替换成 `__location`，从而将操作转移到自定义对象上。当然对于非字面的情况（例如 `this['lo' + 'cation']`），目前还无法处理。
 
 
-### 界面和接口分离
+# 类似项目
 
-参见下文
+目前找到的都是传统后端替换 URL 的方案。当然后端替换也有不少优点，例如浏览器兼容性高，甚至低版本的 IE 都可以使用。
 
+## zmirror
 
-# CHANGELOG
+GitHub: https://github.com/aploium/zmirror
 
-## v0.0.1
+## php-proxy
 
-虽然目前仍为概念演示状态，但相比[最初版本](https://github.com/EtherDream/jsproxy/tree/first-ver)，有了很大变化：
-
-### 不再使用子域名
-
-使用子域名编码目标域名（例如 gg.jsproxy.tk），存在太多缺陷。例如 HTTPS 证书问题，DNS 性能和安全问题等。因此目前不再使用子域名，只用固定的域名，目标 URL 放在路径里。例如：
-
-https://zjcqoo.github.io/-----https://www.google.com
-
-当然这也会产生很多新问题，例如无法支持 Cookie、页面之间没有同源策略限制等。
-
-对于 Cookie，目前通过 JS 来维护，而不用浏览器原生（当然还有不少细节没实现）。这样的好处是前后端可以分离，前端页面可以放在第三方 Web 服务器上（例如 CDN、GitHub Pages），我们的服务器只提供代理接口。
-
-这样一个页面可使用多个服务器的代理接口，并能实现线路切换、负载均衡等效果。
-
-同源策略方面的限制目前暂未实现，因此不要进行登陆等操作，避免隐私泄露。
+GitHub: https://github.com/jenssegers/php-proxy
 
 
-### 服务端优化
+# 项目意义
 
-安全改进：由于 Web 页面托管在第三方站点上，自己的服务器无需开启 443 端口，因此也无需 root 运行。同时支持 IP 黑名单功能，防止 SSRF 攻击。
+本项目主要用于以下技术的研究：
 
-代码改进：接口代理使用固定的 URL（参见 `api.conf`），不再使用任意路径，代码干净了很多。
+* 网站镜像 / 沙盒化
 
+* 钓鱼网站检测技术
 
-## 支持更多浏览器
+* 前端资源访问加速
 
-相比之前版本只支持 Chrome，现在还支持最新的 Safari 和 FireFox。
+当然请勿将本项目用于非法用途，否则后果自负。
 
-注意：FireFox 隐身模式下不支持 Service Worker，只能普通模式访问。
+Demo 页面文明使用，不要进行登陆等涉及隐私的操作。
 
-
-### 提供一个首页
-
-虽然依旧简陋，但比之前好。提供了线路切换、预加载的功能。
 
 # License
 
